@@ -1,0 +1,8 @@
+version: '3'
+services:
+  review:
+    image: vvakame/review:5.0
+    volumes:
+      - .:/11_rust_motor_porting
+    build: .
+    working_dir: /11_rust_motor_porting
