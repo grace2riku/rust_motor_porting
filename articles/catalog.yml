@@ -2,7 +2,14 @@ PREDEF:
   - preface.re
 
 CHAPS:
-  - article.re
+  - motor_control_logic.re
+  - hardware_spec.re
+  - software_spec.re
+  - src_code_spec.re
+  - rust_impl_study.re
+  - rust_env_construction.re
+  - rust_c_impl_cmp.re
+  - impressions.re
 
 APPENDIX:
 
