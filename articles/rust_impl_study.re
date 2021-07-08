@@ -14,13 +14,12 @@ CのコードをRustに移植するときにArduino IDEのようにマイコン�
 HALを探していくと次の2つをみつけました。
 
  1. avr-rust@<fn>{avr-rust_link}
-
  2. avr-hal@<fn>{avr-hal_link}
 
 == avr-rust
 最初にみつけたのがavr-rustでした。
 
-avr-rustの環境構築を試してみましたが私のホストPC(MAC)では環境構築がエラーになりました。
+avr-rustの環境構築を試してみましたが私のホストPC(Mac)では環境構築がエラーになりました。
 
 avr-rustは環境構築ができなかったため使用を諦めました。
 
