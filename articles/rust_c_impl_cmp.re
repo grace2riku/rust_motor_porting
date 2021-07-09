@@ -49,6 +49,10 @@ Arduino MEGAのIOピンのデータ構造を定義します。
 
 該当コードは次の部分です。8-bit Timer/Counter0を示す【dp.TC0】を引数で渡しています。
 
+タイマの関数はtimer.rsにまとめています。
+main関数に書いてもよいと思いますが、タイマの機能はmainとは切り分けて独立させたかったので
+このような実装にしました。
+
 //cmd{
 pub fn init(tc0: arduino_mega2560::pac::TC0) {
     // Configure the timer for the above interval (in CTC mode)
@@ -106,7 +110,7 @@ tc0.***の***の記述がレジスタを示しています。レジスタにつ�
 
 このコードはカウンタとコンペアレジスタが一致した時の割り込みを有効にしています。
 マイコンの全割り込みを有効にしたあとにカウンタとコンペアレジスタが一致すると
-割り込みハンドラにジャンプし割り込みハンドラの処理を実行します。
+割り込みハンドラにジャンプします。
 //cmd{
     tc0.timsk0.write(|w| w.ocie0a().set_bit());
 //}
@@ -132,6 +136,7 @@ tc0.***の***の記述がレジスタを示しています。レジスタにつ�
 設定関数は次のファイルに定義しています。
  * boards/arduino-mega2560/examples/hall_sensor.rs init関数
 
+タイマと同様、外部割り込みの関数を別ファイルにまとめています。
 init関数全体は次のとおりです。
 処理のまとまりごとに少し詳しく説明します。
 //cmd{
@@ -162,6 +167,7 @@ pub fn init(ei: arduino_mega2560::pac::EXINT,
 
 このコードはinit関数の外でホールセンサーの入力状態を知りたいので、
 staic外部変数【HALL_*_PIN】に引数で渡された入力ポートを設定しています。
+外部変数はすべて大文字にするのがRustのセオリーのようです。
 
 static外部変数のアクセスはunsafeで括ります。
 //cmd{
@@ -190,17 +196,12 @@ static外部変数のアクセスはunsafeで括ります。
 //}
 
 次のコードはホールセンサーが接続されている外部割り込みピン(INT2,INT1,INT0)の割り込みを有効にしています。
-マイコンの全割り込みを有効にしたあとに外部割り込みピンの信号レベルに変化があると割り込みハンドラにジャンプし
-割り込み処理を行います。
+マイコンの全割り込みを有効にしたあとに外部割り込みピンの信号レベルに変化があると割り込みハンドラにジャンプします。
 外部割り込みの割り込みハンドラは次のとおりです。
 
  * INT2
-
  * INT1
-
  * INT0
-
-
 
 //cmd{
     // INT2,1,0 interrupt enable
@@ -209,14 +210,202 @@ static外部変数のアクセスはunsafeで括ります。
 
 
 === LEDの出力ポート設定
+次のコードがLEDの出力ポート設定です。
+
+//cmd{
+    let user_led = pins.d13.into_output(&mut pins.ddr);
+    let hall_u_led = pins.d23.into_output(&mut pins.ddr);
+    let hall_v_led = pins.d25.into_output(&mut pins.ddr);
+    let hall_w_led = pins.d27.into_output(&mut pins.ddr);
+    led::init(user_led, hall_u_led, hall_v_led, hall_w_led);
+//}
+
+main関数で次のLEDを出力ポートに設定しています。
+ * Arduino MEGA基板に実装されているLED
+ * ホールセンサーU・V・W　確認用LED
+
+//cmd{
+    let user_led = pins.d13.into_output(&mut pins.ddr);
+    let hall_u_led = pins.d23.into_output(&mut pins.ddr);
+    let hall_v_led = pins.d25.into_output(&mut pins.ddr);
+    let hall_w_led = pins.d27.into_output(&mut pins.ddr);
+//}
+
+出力に設定したLEDをLED初期化に渡します。
+//cmd{
+    led::init(user_led, hall_u_led, hall_v_led, hall_w_led);
+//}
+
+タイマと同じくLEDの関数をled.rsにまとめています。
+次のコードがLED初期化です。
+//cmd{
+pub fn init(user_led:port::portb::PB7<port::mode::Output>,
+            hall_u_led:port::porta::PA1<port::mode::Output>,
+            hall_v_led:port::porta::PA3<port::mode::Output>,
+            hall_w_led:port::porta::PA5<port::mode::Output>){
+    unsafe {
+        USER_LED_PIN = Some(user_led);
+        HALL_U_LED_PIN = Some(hall_u_led);
+        HALL_V_LED_PIN = Some(hall_v_led);
+        HALL_W_LED_PIN = Some(hall_w_led);
+    }
+}
+//}
+
+やっていることは@<hd>{ホールセンサの外部割り込み初期設定}と同じで
+init関数の外でLEDを操作したいのでstatic外部変数に引数のLEDを設定します。
+
 
 === FETのPWM出力、出力ポート設定
+High側のFET3つ、Low側のFET3つを初期設定します。
+このHigh側FETというのはPWM制御するピンに接続されているFETを指します。
+Low側FETというのはPWM制御はせず、GPIO出力で制御するFETを指します。
+次のコードが全体です。
+
+//cmd{
+    let mut timer3 = pwm::Timer3Pwm::new(dp.TC3, pwm::Prescaler::Prescale64);
+    let fet_u_high_pin = pins.d5.into_output(&mut pins.ddr).into_pwm(&mut timer3);
+    let fet_v_high_pin = pins.d2.into_output(&mut pins.ddr).into_pwm(&mut timer3);
+    let fet_w_high_pin = pins.d3.into_output(&mut pins.ddr).into_pwm(&mut timer3);
+    let fet_u_low_pin = pins.d6.into_output(&mut pins.ddr);
+    let fet_v_low_pin = pins.d7.into_output(&mut pins.ddr);
+    let fet_w_low_pin = pins.d8.into_output(&mut pins.ddr);
+
+    motor_control::pwm_init(fet_u_high_pin, fet_v_high_pin, fet_w_high_pin,
+                            fet_u_low_pin, fet_v_low_pin, fet_w_low_pin);
+//}
+
+次のコードはTimer/Counter3でクロックを64分周したTimer3Pwmを定義しています。
+
+クロックは16MHzなので16(MHz)/ 64(分周)でPWM周波数は250kHzになります。
+//cmd{
+    let mut timer3 = pwm::Timer3Pwm::new(dp.TC3, pwm::Prescaler::Prescale64);
+//}
+
+次のコードはHigh側FETにつながっている3つのピンを出力ポート、PWMに設定しています。
+//cmd{
+    let fet_u_high_pin = pins.d5.into_output(&mut pins.ddr).into_pwm(&mut timer3);
+    let fet_v_high_pin = pins.d2.into_output(&mut pins.ddr).into_pwm(&mut timer3);
+    let fet_w_high_pin = pins.d3.into_output(&mut pins.ddr).into_pwm(&mut timer3);
+//}
+
+次のコードはLow側FETにつながっている3つのピンを出力ポートに設定しています。
+//cmd{
+    let fet_u_low_pin = pins.d6.into_output(&mut pins.ddr);
+    let fet_v_low_pin = pins.d7.into_output(&mut pins.ddr);
+    let fet_w_low_pin = pins.d8.into_output(&mut pins.ddr);
+//}
+
+次のコードはHigh側FET, Low側FETの駆動するための初期設定をおこないます。
+初期設定は次のファイルに定義しています。
+
+ * boards/arduino-mega2560/examples/motor_control.rs pwm_init関数
+
+//cmd{
+    motor_control::pwm_init(fet_u_high_pin, fet_v_high_pin, fet_w_high_pin,
+                            fet_u_low_pin, fet_v_low_pin, fet_w_low_pin);
+//}
+
+初期設定のコードは次のとおりです。
+//cmd{
+pub fn pwm_init(fet_u_high_pin:port::porte::PE3<port::mode::Pwm<pwm::Timer3Pwm>>, 
+                fet_v_high_pin:port::porte::PE4<port::mode::Pwm<pwm::Timer3Pwm>>,
+                fet_w_high_pin:port::porte::PE5<port::mode::Pwm<pwm::Timer3Pwm>>,
+                fet_u_low_pin:port::porth::PH3<port::mode::Output>,
+                fet_v_low_pin:port::porth::PH4<port::mode::Output>,
+                fet_w_low_pin:port::porth::PH5<port::mode::Output>){
+
+    unsafe {
+        FET_U_HIGH_PIN = Some(fet_u_high_pin);
+        FET_V_HIGH_PIN = Some(fet_v_high_pin);
+        FET_W_HIGH_PIN = Some(fet_w_high_pin);
+        FET_U_LOW_PIN = Some(fet_u_low_pin);
+        FET_V_LOW_PIN = Some(fet_v_low_pin);
+        FET_W_LOW_PIN = Some(fet_w_low_pin);
+    }
+
+    set_fet_stop_pattern();
+
+    enable_pwm_fet_u_high();
+    enable_pwm_fet_v_high();
+    enable_pwm_fet_w_high();
+}
+//}
+
+次のコードはホールセンサと同様にHigh側FET、Low側FETのピンを初期設定の外で操作したいので
+staticグローバル変数にピンを設定します。
+
+//cmd{
+    unsafe {
+        FET_U_HIGH_PIN = Some(fet_u_high_pin);
+        FET_V_HIGH_PIN = Some(fet_v_high_pin);
+        FET_W_HIGH_PIN = Some(fet_w_high_pin);
+        FET_U_LOW_PIN = Some(fet_u_low_pin);
+        FET_V_LOW_PIN = Some(fet_v_low_pin);
+        FET_W_LOW_PIN = Some(fet_w_low_pin);
+    }
+//}
+
+初期設定後にモータが回転することがないようにすべてのFETをOFFしモータを停止しておきます。
+//cmd{
+    set_fet_stop_pattern();
+//}
+
+この関数を実行するとHigh FETのPWMを有効にします。
+//cmd{
+    enable_pwm_fet_u_high();
+    enable_pwm_fet_v_high();
+    enable_pwm_fet_w_high();
+//}
 
 === 割り込み許可
+マイコンの割り込みを許可します。
+外部割り込みの初期設定で個別に外部割り込みを許可していましたがこちらの割り込みを許可しないと外部割り込みも発生しません。
+割り込みの大元の設定になります。
+//cmd{
+    // Enable interrupts
+    unsafe {
+        avr_device::interrupt::enable();
+    }
+//}
 
 
 == 駆動パターン設定
+FETに駆動パターンを設定します。
+Cの該当関数は【setFETDrivePattern】でした。
 
+駆動パターンの設定は大きく次の処理があります。
+ * ホールセンサーを読み出しモータ現在位置を取得する。
+ * ホールセンサーの値により6個のFETに適切な通電パターンを設定する。
+
+この通電パターンが@<img>{HallandPWMControl}になります。
+//image[HallandPWMControl][モーター制御のタイミングチャート]{
+//}
+
+Rustのモータ駆動パターンの最上位の関数は次のファイルに定義しています。
+
+ * boards/arduino-mega2560/examples/motor_control.rs set_fet_drive_pattern関数
+
+set_fet_drive_patternから次を行います。
+ 1. ホールセンサーを読み出しモータ現在位置を取得する。
+ 2. ホールセンサーの値により6個のFETに適切な通電パターンを設定する。
+
+set_fet_drive_patterのコードは次のとおりです。
+
+//cmd{
+pub fn set_fet_drive_pattern(){
+    // ホールセンサの位置を取得する
+    let _hall_sensor_position = hall_sensor::get_position();
+    // ホールセンサの位置からFET各通電パターンを取得しFETを通電する
+    drive_fet(get_fet_drive_pattern(_hall_sensor_position));
+}
+//}
+
+ホールセンサ位置取得、 通電パターン設定の実装を掘り下げて説明します。
+
+=== ホールセンサ位置取得
+
+=== 通電パターン設定
 
 
 == 駆動停止設定
