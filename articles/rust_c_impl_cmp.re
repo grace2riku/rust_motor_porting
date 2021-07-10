@@ -404,8 +404,93 @@ pub fn set_fet_drive_pattern(){
 ホールセンサ位置取得、 通電パターン設定の実装を掘り下げて説明します。
 
 === ホールセンサ位置取得
+ホールセンサ位置取得get_positionは次のファイルに定義しています。
+
+ * boards/arduino-mega2560/examples/hall_sensors.rs
+
+コードはこちらです。
+//cmd{
+pub fn get_position() -> u8{
+    unsafe {
+        (HALL_W_PIN.as_mut().unwrap().is_high().void_unwrap() as u8) << 2 |
+        (HALL_V_PIN.as_mut().unwrap().is_high().void_unwrap() as u8) << 1 |
+        HALL_U_PIN.as_mut().unwrap().is_high().void_unwrap() as u8
+    }
+}
+//}
+@<hd>{ホールセンサの外部割り込み初期設定}で設定したグローバル変数からホールセンサー入力ポート状態を取得します。
+ホールセンサーは3つ(U相・V相・W相)ありますが、U相は0bit目、V相は1bit目、W相は2bit目に割り当て戻り値として返します。
+
+次のCのコード(main.cpp setFETDrivePattern関数より引用)と等価です。
+//cmd{
+void setFETDrivePattern()
+{
+	byte hallSensorPosition;	// ホールセンサー位置
+	
+	hallSensorPosition = digitalRead(HALL_W_PORT) << 2 | 
+						digitalRead(HALL_V_PORT) << 1 | 
+						digitalRead(HALL_U_PORT);
+
+//}
 
 === 通電パターン設定
+通電パターン設定drive_fetは次のファイルに定義しています。
+
+ * boards/arduino-mega2560/examples/motor_control.rs
+
+motor_controlは引数にget_fet_drive_pattern関数の戻り値を設定しています。
+コードはこちらです。
+
+//cmd{
+    // ホールセンサの位置からFET各通電パターンを取得しFETを通電する
+    drive_fet(get_fet_drive_pattern(_hall_sensor_position));
+//}
+
+get_fet_drive_pattern関数は前述したホールセンサー値を引数に渡すとFETの通電パターンを返す関数です。
+drive_fet関数にget_fet_drive_pattern関数の戻り値を与えるとモータの駆動をおこないます。
+
+get_fet_drive_pattern関数、drive_fet関数の順番に説明します。
+
+==== ホールセンサ値からFET通電パターンの取得(get_fet_drive_pattern関数)
+get_fet_drive_pattern関数は次のファイルに定義しています。
+
+ * boards/arduino-mega2560/examples/motor_control.rs
+
+Cの該当処理はmain.cpp setFETDrivePattern関数のswitch文です。
+
+Rustのコードは次のとおりです。
+個人的にこの関数はRustっぽい実装をしたと感じています。
+引数にホールセンサー入力値(U相:0bit目、V相:1bit目、W相:2bit目)を与えると、
+戻り値として次のデータをタプル型として返します。
+
+ 1. U相 High側FET PWM Duty 設定値(0〜255)
+ 2. V相 High側FET PWM Duty 設定値(0〜255)
+ 3. W相 High側FET PWM Duty 設定値(0〜255)
+ 4. U相 Low側FET 出力ポートのレベル 設定値(true or false)
+ 5. V相 Low側FET 出力ポートのレベル 設定値(true or false)
+ 6. W相 Low側FET 出力ポートのレベル 設定値(true or false)
+
+//cmd{
+fn get_fet_drive_pattern(hall_sensor_potion:u8) -> (u8, u8, u8, bool, bool, bool) {
+//fn get_fet_drive_pattern(hall_sensor_potion:u8) -> (u16, u16, u16, bool, bool, bool) {
+    match hall_sensor_potion {
+        HALL_SENSOR_POSITION_5 => (load_pwm_duty(), 0, 0, false, true, false),
+        HALL_SENSOR_POSITION_1 => (load_pwm_duty(), 0, 0, false, false, true),
+        HALL_SENSOR_POSITION_3 => (0, load_pwm_duty(), 0, false, false, true),
+        HALL_SENSOR_POSITION_2 => (0, load_pwm_duty(), 0, true, false, false),
+        HALL_SENSOR_POSITION_6 => (0, 0, load_pwm_duty(), true, false, false),
+        HALL_SENSOR_POSITION_4 => (0, 0, load_pwm_duty(), false, true, false),
+        _ => (0, 0, 0, false, false, false),
+    }
+}
+//}
+
+動作の一例を説明します。
+@<hd>{駆動パターン設定}で書いたタイミングチャートを再掲します。
+
+//image[HallandPWMControl][モーター制御のタイミングチャート]{
+//}
+
 
 
 == 駆動停止設定
