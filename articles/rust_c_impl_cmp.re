@@ -438,7 +438,7 @@ void setFETDrivePattern()
 
  * boards/arduino-mega2560/examples/motor_control.rs
 
-motor_controlは引数にget_fet_drive_pattern関数の戻り値を設定しています。
+drive_fetは引数にget_fet_drive_pattern関数の戻り値を設定しています。
 コードはこちらです。
 
 //cmd{
@@ -491,10 +491,105 @@ fn get_fet_drive_pattern(hall_sensor_potion:u8) -> (u8, u8, u8, bool, bool, bool
 //image[HallandPWMControl][モーター制御のタイミングチャート]{
 //}
 
+この図の電ステージ1の場合、ホールセンサー入力値は次になります。
+ * ホールセンサー U = Low → Highレベル 0bit目に割り当て
+ * ホールセンサー V = Lowレベル 1bit目に割り当て
+ * ホールセンサー W = Highレベル 2bit目に割り当て
 
+FETの通電パターンの期待値は次になります。
+ * U相High側FET → PWM制御　任意のDuty設定
+ * U相Low側FET → GPIO Lowレベル出力
+ * V相High側FET → PWM制御　0% Duty
+ * V相Low側FET → GPIO Highレベル出力
+ * W相High側FET → PWM制御　0% Duty
+ * W相Low側FET → GPIO Lowレベル出力
+
+get_fet_drive_pattern関数の引数hall_sensor_potionに5がセットされ関数呼び出しされます。
+引数hall_sensor_potionが5の場合は次のmatch式が該当します。
+
+//cmd{
+       HALL_SENSOR_POSITION_5 => (load_pwm_duty(), 0, 0, false, true, false),
+//}
+
+タプル型は左から次のデータと想定して実装しています。
+ * U相High側FET, V相High側FET, W相High側FET, U相Low側FET, V相High側FET, W相Low側FET
+ 
+通電パターン1の場合は次の値を設定することを想定しています。
+ * U相High側FET → PWM Duty (可変抵抗設定値)
+ * V相High側FET → 0 (PWM Duty 0%)
+ * W相High側FET → 0 (PWM Duty 0%)
+ * U相Low側FET → false
+ * V相Low側FET → true
+ * W相Low側FET → false
+
+Low側FETのbool型はこの後の処理でtrueだったらGPIO Highレベル出力、
+falseだったらGPIO Lowレベルに解釈されポート出力されます。
+
+==== FET通電パターン設定(drive_fet関数)
+get_fet_drive_pattern関数の戻り値がdrive_fet関数の引数として利用します。
+drive_fet関数は引数に通電パターンを受け取るとモータ駆動するためにFETに設定します。
+結果、モータが駆動します。
+
+次がdrive_fet関数のコードです。
+//cmd{
+fn drive_fet(uvw_phase_values: (u8, u8, u8, bool, bool, bool)){
+    let (u_high, v_high, w_high, u_low, v_low, w_low) = uvw_phase_values;
+    unsafe {
+        FET_U_HIGH_PIN.as_mut().unwrap().set_duty(u_high);
+        FET_V_HIGH_PIN.as_mut().unwrap().set_duty(v_high);
+        FET_W_HIGH_PIN.as_mut().unwrap().set_duty(w_high);
+        if u_low == true { FET_U_LOW_PIN.as_mut().unwrap().set_high().void_unwrap(); }
+        else {FET_U_LOW_PIN.as_mut().unwrap().set_low().void_unwrap();}
+
+        if v_low == true { FET_V_LOW_PIN.as_mut().unwrap().set_high().void_unwrap(); }
+        else {FET_V_LOW_PIN.as_mut().unwrap().set_low().void_unwrap();}
+
+        if w_low == true { FET_W_LOW_PIN.as_mut().unwrap().set_high().void_unwrap(); }
+        else {FET_W_LOW_PIN.as_mut().unwrap().set_low().void_unwrap();}
+    }
+}
+//}
+
+FETに操作するための変数はすべてstatic外部変数として定義しているのでunsafeで括っています。
+
+こちらのコードはHigh側FETの設定です。
+High側FETはPWM機能で初期設定しているのでset_duty関数でPWM Dutyを設定しています。
+//cmd{
+        FET_U_HIGH_PIN.as_mut().unwrap().set_duty(u_high);
+        FET_V_HIGH_PIN.as_mut().unwrap().set_duty(v_high);
+        FET_W_HIGH_PIN.as_mut().unwrap().set_duty(w_high);
+//}
+
+こちらのコードはLow側FETの設定です。
+Low側FETはGPIO出力で初期設定しているのでset_high関数またはset_low関数で設定します。
+
+//cmd{
+        if u_low == true { FET_U_LOW_PIN.as_mut().unwrap().set_high().void_unwrap(); }
+        else {FET_U_LOW_PIN.as_mut().unwrap().set_low().void_unwrap();}
+
+        if v_low == true { FET_V_LOW_PIN.as_mut().unwrap().set_high().void_unwrap(); }
+        else {FET_V_LOW_PIN.as_mut().unwrap().set_low().void_unwrap();}
+
+        if w_low == true { FET_W_LOW_PIN.as_mut().unwrap().set_high().void_unwrap(); }
+        else {FET_W_LOW_PIN.as_mut().unwrap().set_low().void_unwrap();}
+//}
 
 == 駆動停止設定
+駆動停止設定set_fet_stop_patternは次のファイルに定義しています。
 
+ * boards/arduino-mega2560/examples/motor_control.rs
+
+コードはこちらです。
+//cmd{
+pub fn set_fet_stop_pattern(){
+    drive_fet((0, 0, 0, false, false, false));
+}
+//}
+
+この関数呼び出しでモータが停止します。
+@<hd>{FET通電パターン設定(drive_fet関数)}で説明したdrive_fet関数の引数に
+High側FETはすべてDuty 0%、Low側FETはすべてGPIO出力 Lowを指定し呼び出します。
+次のCのコード(main.cpp setFETStopPattern関数より引用)と等価です。
 
 
 == 周期処理
