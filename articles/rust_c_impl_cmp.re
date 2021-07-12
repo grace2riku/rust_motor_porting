@@ -593,3 +593,75 @@ High側FETはすべてDuty 0%、Low側FETはすべてGPIO出力 Lowを指定し�
 
 
 == 周期処理
+周期処理は次のファイルに定義しています。
+
+ * boards/arduino-mega2560/examples/timer.rs
+ * boards/arduino-mega2560/examples/evkart-main.rs
+
+タイマ割り込みハンドラでは制御タイミングのフラグセット、1秒間隔のLED点滅を実行します。
+Cと少し実装が違い、Rustでは制御タイミングのフラグセット・LED点滅のみ実行します。
+タイマ割り込みハンドラからC同様にAD変換を実行するには
+main関数のはじめで初期設定したAD変換の変数(a0)をグローバル化するなどの対応が考えられます。
+今回はそこまで実装せず、タイマ割り込みハンドラでは制御タイミングのフラグをセットするだけで
+AD変換はmain関数のループの中で制御フラグを確認して実行するようにしました。
+
+
+タイマ割り込みハンドラのコードはこちらです。
+//cmd{
+#[avr_device::interrupt(atmega2560)]
+fn TIMER0_COMPA() {
+    unsafe {
+        motor_control::set_speed_control_timing(true);
+
+        COUNTER_1SEC += 1;
+        if COUNTER_1SEC >= COUNT_1SEC {
+            COUNTER_1SEC = 0;
+            led::toggle_user();
+        }
+    }
+}
+//}
+
+
+制御タイミングのフラグを確認し、可変抵抗のAD変換、PWM Duty設定は
+evkart-main.rs main関数のloopの中で実行しています。
+
+//cmd{
+    loop {
+        if motor_control::get_speed_control_timing() == true {
+            let ad0:u16 = nb::block!(adc.read(&mut a0)).void_unwrap();
+            motor_control::save_pwm_duty((ad0 / 4) as u8);
+//            motor_control::save_pwm_duty(ad0);
+
+            if motor_control::load_pwm_duty() > VOL_0PCT_POINT {
+                if motor_control::get_drive_state() == motor_control::DriveState::Stop {
+                    motor_control::set_drive_state(motor_control::DriveState::Drive);
+                    //モータ停止中のため強制駆動する
+                    motor_control::set_fet_drive_pattern();
+                }
+            } else {
+                motor_control::set_drive_state(motor_control::DriveState::Stop);
+                motor_control::save_pwm_duty(0);
+                // モータを停止する
+                motor_control::set_fet_stop_pattern();
+            }
+    
+            motor_control::set_speed_control_timing(false);
+        }
+//}
+
+loopの中で呼び出している関数の機能は次のとおりです。
+
+ * get_speed_control_timing関数：制御タイミングを示すフラグの取得。制御タイミングでtrueが変える。
+ * save_pwm_duty関数: AD変換値をmotor_control.rsのグローバル変数に保存する関数。
+ * load_pwm_duty関数: save_pwm_duty関数で保存したPWM Dutyを読み出す関数。
+ * get_drive_state関数: モータ駆動状態を返す関数。初期値はモータ停止状態のDriveState::Stopを返す。
+ * set_drive_state関数: モータ駆動状態を設定する関数。モータ駆動状態が変わったら引数に遷移後の状態をセットし呼び出す。
+ * set_fet_drive_pattern関数: @<hd>{駆動パターン設定}を参照。
+ * set_fet_stop_pattern関数: @<hd>{駆動停止設定}を参照。
+ * set_speed_control_timing関数：制御タイミングの設定。trueが制御タイミングを示す。
+
+if文がありますが次の条件で分岐します。
+
+ * 可変抵抗がある閾値(==VOL_0PCT_POINT)を超えたらモータ速度調整を有効にする 
+ * 可変抵抗閾値未満の場合はPWM Dutyを0%、モータ停止する
