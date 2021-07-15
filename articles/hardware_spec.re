@@ -18,14 +18,14 @@
 @<img>{rust_env_construction}の代替ハードウェアの構成について説明します。
 
  1. Arduino-mega2560
- 2. ホールセンサー代替DIPスイッチ：左からW・V・U。
+ 2. ホールセンサ代替DIPスイッチ：左からW・V・U。
  3. High側FET 代替LED：右からU・V・W
  4. Low側FET 代替LED：右からU・V・W
  5. スロットル (可変抵抗)
 
 1はモータ制御を行うArduino MEGA 2560です。
 
-2はホールセンサーを代替しているDIP SWです。
+2はホールセンサを代替しているDIP SWです。
 @<img>{rust_env_construction}でスイッチを上側にするとHighレベル、下側にするとLowレベルになります。
 
 3はHigh側FETを代替しているLEDです。正常に動作していれば可変抵抗の設定値によりPWM制御で調光されるはずです。

@@ -11,6 +11,7 @@ CHAPS:
   - rust_c_impl_cmp.re
   - operation_confirmation.re
   - impressions.re
+  - future_tasks.re
 
 APPENDIX:
 

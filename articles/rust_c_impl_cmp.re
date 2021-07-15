@@ -165,7 +165,7 @@ pub fn init(ei: arduino_mega2560::pac::EXINT,
 }
 //}
 
-このコードはinit関数の外でホールセンサーの入力状態を知りたいので、
+このコードはinit関数の外でホールセンサの入力状態を知りたいので、
 staic外部変数【HALL_*_PIN】に引数で渡された入力ポートを設定しています。
 外部変数はすべて大文字にするのがRustのセオリーのようです。
 
@@ -178,11 +178,11 @@ static外部変数のアクセスはunsafeで括ります。
     }
 //}
 
-次のコードはホールセンサーが接続されている外部割り込み端子の割り込みエッジを選択しています。
+次のコードはホールセンサが接続されている外部割り込み端子の割り込みエッジを選択しています。
 マイコンデータシート@<fn>{mcu_datasheet_link}のeicraレジスタ(15.2.1　EICRA – External Interrupt Control Register A)を
 参照すると何をしているかわかります。
 
-ホールセンサーは信号の立ち上がり・立ち下がりを検出したいので両エッジ割り込みを設定しています。
+ホールセンサは信号の立ち上がり・立ち下がりを検出したいので両エッジ割り込みを設定しています。
 
 //cmd{
     // INT2 hall sensor-U 両エッジ割り込みに設定
@@ -195,7 +195,7 @@ static外部変数のアクセスはunsafeで括ります。
     ei.eicra.write(|w| w.isc0().bits(0x01));
 //}
 
-次のコードはホールセンサーが接続されている外部割り込みピン(INT2,INT1,INT0)の割り込みを有効にしています。
+次のコードはホールセンサが接続されている外部割り込みピン(INT2,INT1,INT0)の割り込みを有効にしています。
 マイコンの全割り込みを有効にしたあとに外部割り込みピンの信号レベルに変化があると割り込みハンドラにジャンプします。
 外部割り込みの割り込みハンドラは次のとおりです。
 
@@ -222,7 +222,7 @@ static外部変数のアクセスはunsafeで括ります。
 
 main関数で次のLEDを出力ポートに設定しています。
  * Arduino MEGA基板に実装されているLED
- * ホールセンサーU・V・W　確認用LED
+ * ホールセンサU・V・W　確認用LED
 
 //cmd{
     let user_led = pins.d13.into_output(&mut pins.ddr);
@@ -252,7 +252,7 @@ pub fn init(user_led:port::portb::PB7<port::mode::Output>,
 }
 //}
 
-やっていることは@<hd>{ホールセンサの外部割り込み初期設定}と同じで
+やっていることは@<hd>{ホールセンサの外部割り込み}と同じで
 init関数の外でLEDを操作したいのでstatic外部変数に引数のLEDを設定します。
 
 
@@ -375,11 +375,12 @@ FETに駆動パターンを設定します。
 Cの該当関数は【setFETDrivePattern】でした。
 
 駆動パターンの設定は大きく次の処理があります。
- * ホールセンサーを読み出しモータ現在位置を取得する。
- * ホールセンサーの値により6個のFETに適切な通電パターンを設定する。
+
+ * ホールセンサを読み出しモータ現在位置を取得する。
+ * ホールセンサの値により6個のFETに適切な通電パターンを設定する。
 
 この通電パターンが@<img>{HallandPWMControl}になります。
-//image[HallandPWMControl][モーター制御のタイミングチャート]{
+//image[HallandPWMControl][モータ制御のタイミングチャート]{
 //}
 
 Rustのモータ駆動パターンの最上位の関数は次のファイルに定義しています。
@@ -387,8 +388,8 @@ Rustのモータ駆動パターンの最上位の関数は次のファイルに�
  * boards/arduino-mega2560/examples/motor_control.rs set_fet_drive_pattern関数
 
 set_fet_drive_patternから次を行います。
- 1. ホールセンサーを読み出しモータ現在位置を取得する。
- 2. ホールセンサーの値により6個のFETに適切な通電パターンを設定する。
+ 1. ホールセンサを読み出しモータ現在位置を取得する。
+ 2. ホールセンサの値により6個のFETに適切な通電パターンを設定する。
 
 set_fet_drive_patterのコードは次のとおりです。
 
@@ -418,14 +419,14 @@ pub fn get_position() -> u8{
     }
 }
 //}
-@<hd>{ホールセンサの外部割り込み初期設定}で設定したグローバル変数からホールセンサー入力ポート状態を取得します。
-ホールセンサーは3つ(U相・V相・W相)ありますが、U相は0bit目、V相は1bit目、W相は2bit目に割り当て戻り値として返します。
+@<hd>{ホールセンサの外部割り込み}で設定したグローバル変数からホールセンサ入力ポート状態を取得します。
+ホールセンサは3つ(U相・V相・W相)ありますが、U相は0bit目、V相は1bit目、W相は2bit目に割り当て戻り値として返します。
 
-次のCのコード(main.cpp setFETDrivePattern関数より引用)と等価です。
+次のCのコード(main.cpp setFETDrivePattern関数)と等価です。
 //cmd{
 void setFETDrivePattern()
 {
-	byte hallSensorPosition;	// ホールセンサー位置
+	byte hallSensorPosition;	// ホールセンサ位置
 	
 	hallSensorPosition = digitalRead(HALL_W_PORT) << 2 | 
 						digitalRead(HALL_V_PORT) << 1 | 
@@ -446,7 +447,7 @@ drive_fetは引数にget_fet_drive_pattern関数の戻り値を設定してい�
     drive_fet(get_fet_drive_pattern(_hall_sensor_position));
 //}
 
-get_fet_drive_pattern関数は前述したホールセンサー値を引数に渡すとFETの通電パターンを返す関数です。
+get_fet_drive_pattern関数は前述したホールセンサ値を引数に渡すとFETの通電パターンを返す関数です。
 drive_fet関数にget_fet_drive_pattern関数の戻り値を与えるとモータの駆動をおこないます。
 
 get_fet_drive_pattern関数、drive_fet関数の順番に説明します。
@@ -460,7 +461,7 @@ Cの該当処理はmain.cpp setFETDrivePattern関数のswitch文です。
 
 Rustのコードは次のとおりです。
 個人的にこの関数はRustっぽい実装をしたと感じています。
-引数にホールセンサー入力値(U相:0bit目、V相:1bit目、W相:2bit目)を与えると、
+引数にホールセンサ入力値(U相:0bit目、V相:1bit目、W相:2bit目)を与えると、
 戻り値として次のデータをタプル型として返します。
 
  1. U相 High側FET PWM Duty 設定値(0〜255)
@@ -487,16 +488,17 @@ fn get_fet_drive_pattern(hall_sensor_potion:u8) -> (u8, u8, u8, bool, bool, bool
 
 動作の一例を説明します。
 @<hd>{駆動パターン設定}で書いたタイミングチャートを再掲します。
-
-//image[HallandPWMControl][モーター制御のタイミングチャート]{
+//image[HallandPWMControl][モータ制御のタイミングチャート]{
 //}
 
-この図の電ステージ1の場合、ホールセンサー入力値は次になります。
- * ホールセンサー U = Low → Highレベル 0bit目に割り当て
- * ホールセンサー V = Lowレベル 1bit目に割り当て
- * ホールセンサー W = Highレベル 2bit目に割り当て
+この図の電ステージ1の場合、ホールセンサ入力値は次になります。
+
+ * ホールセンサ U = Low → Highレベル 0bit目に割り当て
+ * ホールセンサ V = Lowレベル 1bit目に割り当て
+ * ホールセンサ W = Highレベル 2bit目に割り当て
 
 FETの通電パターンの期待値は次になります。
+
  * U相High側FET → PWM制御　任意のDuty設定
  * U相Low側FET → GPIO Lowレベル出力
  * V相High側FET → PWM制御　0% Duty
@@ -512,9 +514,11 @@ get_fet_drive_pattern関数の引数hall_sensor_potionに5がセットされ関�
 //}
 
 タプル型は左から次のデータと想定して実装しています。
- * U相High側FET, V相High側FET, W相High側FET, U相Low側FET, V相High側FET, W相Low側FET
+
+ * U相High側FET, V相High側FET, W相High側FET, U相Low側FET, V相Low側FET, W相Low側FET
  
 通電パターン1の場合は次の値を設定することを想定しています。
+
  * U相High側FET → PWM Duty (可変抵抗設定値)
  * V相High側FET → 0 (PWM Duty 0%)
  * W相High側FET → 0 (PWM Duty 0%)
@@ -523,7 +527,7 @@ get_fet_drive_pattern関数の引数hall_sensor_potionに5がセットされ関�
  * W相Low側FET → false
 
 Low側FETのbool型はこの後の処理でtrueだったらGPIO Highレベル出力、
-falseだったらGPIO Lowレベルに解釈されポート出力されます。
+falseだったらGPIO Lowレベルに解釈されポート出力します。
 
 ==== FET通電パターン設定(drive_fet関数)
 get_fet_drive_pattern関数の戻り値がdrive_fet関数の引数として利用します。
@@ -589,7 +593,7 @@ pub fn set_fet_stop_pattern(){
 この関数呼び出しでモータが停止します。
 @<hd>{FET通電パターン設定(drive_fet関数)}で説明したdrive_fet関数の引数に
 High側FETはすべてDuty 0%、Low側FETはすべてGPIO出力 Lowを指定し呼び出します。
-次のCのコード(main.cpp setFETStopPattern関数より引用)と等価です。
+Cのコードmain.cpp setFETStopPattern関数と等価です。
 
 
 == 周期処理
@@ -624,30 +628,30 @@ fn TIMER0_COMPA() {
 
 
 制御タイミングのフラグを確認し、可変抵抗のAD変換、PWM Duty設定は
-evkart-main.rs main関数のloopの中で実行しています。
+@<list>{main_loop} evkart-main.rs main関数のloopの中で実行しています。
 
-//cmd{
-    loop {
-        if motor_control::get_speed_control_timing() == true {
-            let ad0:u16 = nb::block!(adc.read(&mut a0)).void_unwrap();
-            motor_control::save_pwm_duty((ad0 / 4) as u8);
+//list[main_loop][main関数のloop]{
+loop {
+    if motor_control::get_speed_control_timing() == true {
+        let ad0:u16 = nb::block!(adc.read(&mut a0)).void_unwrap();
+        motor_control::save_pwm_duty((ad0 / 4) as u8);
 //            motor_control::save_pwm_duty(ad0);
 
-            if motor_control::load_pwm_duty() > VOL_0PCT_POINT {
-                if motor_control::get_drive_state() == motor_control::DriveState::Stop {
-                    motor_control::set_drive_state(motor_control::DriveState::Drive);
-                    //モータ停止中のため強制駆動する
-                    motor_control::set_fet_drive_pattern();
-                }
-            } else {
-                motor_control::set_drive_state(motor_control::DriveState::Stop);
-                motor_control::save_pwm_duty(0);
-                // モータを停止する
-                motor_control::set_fet_stop_pattern();
+        if motor_control::load_pwm_duty() > VOL_0PCT_POINT {
+            if motor_control::get_drive_state() == motor_control::DriveState::Stop {
+                motor_control::set_drive_state(motor_control::DriveState::Drive);
+                //モータ停止中のため強制駆動する
+                motor_control::set_fet_drive_pattern();
             }
-    
-            motor_control::set_speed_control_timing(false);
+        } else {
+            motor_control::set_drive_state(motor_control::DriveState::Stop);
+            motor_control::save_pwm_duty(0);
+            // モータを停止する
+            motor_control::set_fet_stop_pattern();
         }
+
+        motor_control::set_speed_control_timing(false);
+    }
 //}
 
 loopの中で呼び出している関数の機能は次のとおりです。
