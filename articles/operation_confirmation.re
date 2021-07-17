@@ -29,7 +29,7 @@ Cの動作確認結果です。
 FET代替のLEDは次のように割り当てています。
 
  * 右上LED:U High側FET代替/右下LED:U Low側FET代替
- * 中央上側ED:V High側FET代替/中央下側LED:V Low側FET代替
+ * 中央上側LED:V High側FET代替/中央下側LED:V Low側FET代替
  * 左上LED:W High側FET代替/左下LED:V Low側FET代替
 
 @<img>{stage-1_photo}が動作確認時の写真です。
@@ -45,12 +45,12 @@ DIPスイッチは上側でHighレベル、下側でLowレベルになります�
 つまり@<img>{HallandPWMControl}の通電ステージ1に該当します。
 
 通電ステージ1はU High側FETがPWM出力、V Low側FETがHighレベルになります。
-FET代替LEDもU High側FET・V Low側FETが点灯しています。
+FET代替LEDもU High側・V Low側が点灯しています。
 
 @<img>{stage-1}が通電ステージ1の波形データです。
 //image[stage-1][通電ステージ1 動作確認時の波形]{
 //}
-U High側FETがPWM出力、V Low側FETがHighレベルになっているので通電ステージ1の動作は期待とおりです。
+U High側がPWM出力、V Low側がHighレベルになっているので通電ステージ1の動作は期待とおりです。
 
 通電ステージ2〜6も同様に確認します。
 

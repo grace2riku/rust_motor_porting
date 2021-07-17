@@ -6,7 +6,7 @@ Rustを触ったからにはテスト機能を使わないのは宝の持ち腐�
 
 実際の組込み製品開発の現場ではユニットテストに加えてカバレッジ計測が必要になるシーンも多いと思います。
 
-Webを検索していたらRustでもカバレッジ計測できるツールがあるようなので興味深いです。
+Webを検索していたらRustでもカバレッジ計測できるツールがあるようで興味深いです。
 //footnote[coverage_link_1][https://tech-blog.optim.co.jp/entry/2019/02/19/173000]
 //footnote[coverage_link_2][https://qiita.com/dalance/items/69e18fe300760f8d7de0]
 

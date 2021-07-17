@@ -31,8 +31,11 @@ cargo +nightly-2021-01-07 build --example evkart-main
 
 elfファイルの書き込みは次のコマンドを実行します。
 //cmd{
-avrdude -patmega2560 -cwiring -P/dev/cu.usbmodem141401 -b115200 -D -Uflash:w:../../target/avr-atmega2560/debug/examples/evkart-main.elf:e
+avrdude -patmega2560 -cwiring -P/dev/cu.usbmodem141401 -b115200 -D
+ -Uflash:w:../../target/avr-atmega2560/debug/examples/evkart-main.elf:e
 //}
+
+紙面の都合上、改行しています。コマンドは改行しないで実行します。
 
 【-P/dev/cu.usbmodem141401】の部分はお使いの環境で変わるかと思います。
 

@@ -5,7 +5,10 @@ CからRustの移植作業を実施した個人的な感想です。
 Rustに関すること、avr-halの2つの観点で書きます。
 
 == Rust
-Rustに関する感想です。
+Rustの感想です。
+
+=== 開発環境構築
+Rustの開発環境構築はとてもシンプルでユーザーフレンドリーと感じました。
 
 === モダン
 Cよりモダンに書ける、と感じました。
@@ -22,15 +25,26 @@ Cだと外部に公開したい関数はヘッダファイルに書き、呼び�
 Rustでは【mod】キーワードでモジュールを読み込めて、外部に公開したい関数は【pub】キーワードをつければよくてCに比べ楽・簡潔と感じました。
 
 === unsafe
-外部変数へのアクセスはunsafeでくくらないとコンパイルエラーになります。
+外部変数へのアクセスはunsafeで括らないとコンパイルエラーになります。
 unsafeを書くと危険なこと・いけないことをしているという意識になってきます。
-ただ、危険なコードが明示される、という点でよいのではないかと思いました。
+ただ、危険なコードがはっきり明示される、という点でよいと思いました。
 
 
 === コンパイラ
 コンパイラが親切です。
 Rustのコーディングルールもウォーニングとして出力してくれますし、
 コンパイラのメッセージに従うと他の人にもわかりやすい・読みやすいコードになると予想できます。
+
+=== 学習のインフラ
+//footnote[Playground_link][https://play.rust-lang.org]
+//footnote[Rust_Tour_link][https://tourofrust.com]
+
+ドキュメント、オンラインの実行環境、学習サイトもあり学習するためのインフラが整備されている印象です。
+着実にステップアップしていける環境が整っている印象です。
+
+ * オンライン実行環境 Playground@<fn>{Playground_link}
+ * 学習サイト Tour of Rust@<fn>{Rust_Tour_link}
+
 
 == avr-hal
 avr-halの感想です。
@@ -63,14 +77,14 @@ README.mdに書いてある【Starting your own project】の手順をおこな�
 一例を挙げるとhall_sensor.rsの外部変数です。
 
 グローバル変数の定義は次です。
-//cmd{
+//list[hallsensor_global_val_def][ホールセンサの外部変数定義]{
 // hall sensor-U d19, PD2
 static mut HALL_U_PIN: Option<port::portd::PD2<port::mode::Input<port::mode::PullUp>>> = None;
 //}
 これはホールセンサU相の値を取得するための外部変数です。
 Option型・Noneで定義しておき、hall_sensor.rsのinit関数で代入しています。
 
-//cmd{
+//list[hallsensor_global_val_set][ホールセンサの外部変数の設定]{
 pub fn init(ei: arduino_mega2560::pac::EXINT, 
             u_phase: port::portd::PD2<port::mode::Input<port::mode::PullUp>>,
             v_phase: port::portd::PD1<port::mode::Input<port::mode::PullUp>>,
@@ -85,9 +99,8 @@ pub fn init(ei: arduino_mega2560::pac::EXINT,
 
 
 どこに悩んだかというと型の定義です。この部分です。
-//cmd{
-Option<port::portd::PD2<port::mode::Input<port::mode::PullUp>>>
-//}
+
+@<strong>{Option<port::portd::PD2<port::mode::Input<port::mode::PullUp>>>}
 
 //footnote[Option_link][boards/arduino-leonardo/examples/leonardo-interrupt.rs　のグローバル変数 PIN]
 
